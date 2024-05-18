@@ -1,0 +1,11 @@
+websites:
+  - name: ifixit.de
+    scraper_spec:
+      tag_name: div
+      prop_name: class
+      prop_val: product__price
+  - name: refurbed.de
+    scraper_spec:
+      tag_name: p
+      prop_name: data-cypress
+      prop_val: product-price

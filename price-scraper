@@ -1,0 +1,35 @@
+#!/bin/sh
+
+if test -z "$1"; then
+    echo "Error: missing required argument <website>." >&2
+    exit 1
+fi
+
+config="config.yml"
+website="$1"
+
+cd "$(dirname "$0")" || {
+    echo "Error: can't cd" >&2
+    exit 1
+}
+if test "$(NAME="$website" yq '[.websites[] | select(.name == strenv(NAME))] | length' "$config")" -eq 0; then
+    echo "Error: no configuration found for website '$website'." >&2
+    exit 1
+fi
+
+scraper_config=$(mktemp) ; trap 'rm $scraper_config' EXIT
+NAME="$website" yq '.websites[] | select(.name == strenv(NAME)) | .scraper_spec | [.tag_name, .prop_name, .prop_val] | @tsv' "$config" > "$scraper_config"
+while read -r _tag_name _prop_name _prop_val; do
+    tag_name="$_tag_name"
+    prop_name="$_prop_name"
+    prop_val="$_prop_val"
+done < "$scraper_config"
+
+if test -z "$tag_name" -o -z "$prop_name" -o -z "$prop_val"; then
+    echo "Error: invalid scraper_spec for website." >&2
+    exit 1
+fi
+
+# shellcheck source=/dev/null
+. .venv/bin/activate
+python price_scraper.py "$tag_name" "$prop_name" "$prop_val"
